@@ -157,6 +157,9 @@ class CameraBasePyLabLib(DAQ_Viewer_base):
                 self.clear_roi()
                 param.setValue(False)
 
+        if param.name() == 'sensor':
+            self.get_set_color()
+
     def ini_detector_custom(self, controller=None):
         raise NotImplementedError
 
@@ -200,6 +203,8 @@ class CameraBasePyLabLib(DAQ_Viewer_base):
         if 'monochrome' in self.settings['sensor'].lower():
             self.settings.child('output_color').setValue('MonoChrome')
             self.settings.child('output_color').setOpts(visible=False)
+        else:
+            self.settings.child('output_color').setOpts(visible=True)
 
     def get_set_main_parameters(self):
         # Set exposure time
