@@ -9,14 +9,6 @@ scanners = false  # true if plugin contains custom scan layout (daq_scan extensi
 package-url = 'https://github.com/PyMoDAQ/pymodaq_plugins_utils'
 
 
-[project.optional-dependencies]
-serial = [
-    "pyvisa",
-]
-
-serial = [
-    "pyvisa",
-]
 
 [project]
 name = "pymodaq_plugins_utils"
@@ -56,6 +48,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: User Interfaces",
+]
+
+[project.optional-dependencies]
+serial = [
+    "pyvisa",
 ]
 
 
