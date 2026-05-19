@@ -16,16 +16,6 @@ dependencies = [
     #todo: list here all dependencies your package may have
 ]
 
-[project.optional-dependencies]
-
-
-
-serial = [
-    "pyvisa",
-
-]
-
-
 authors = [
     {name = "Weber Sebastien", email = "sebastien.weber@cemes.fr"},
     #todo: list here all authors of your plugin
@@ -56,6 +46,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: User Interfaces",
+]
+
+[project.optional-dependencies]
+serial = [
+    "pyvisa",
+
 ]
 
 [build-system]
