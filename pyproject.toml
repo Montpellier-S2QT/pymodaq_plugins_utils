@@ -16,6 +16,16 @@ dependencies = [
     #todo: list here all dependencies your package may have
 ]
 
+[project.optional-dependencies]
+
+
+
+serial = [
+    "pyvisa",
+
+]
+
+
 authors = [
     {name = "Weber Sebastien", email = "sebastien.weber@cemes.fr"},
     #todo: list here all authors of your plugin
