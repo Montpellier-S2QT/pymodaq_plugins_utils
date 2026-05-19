@@ -42,9 +42,9 @@ cam_params = [
 ]
 
 
-class CameraBase(DAQ_Viewer_base):
+class CameraBasePyLabLib(DAQ_Viewer_base):
     """
-    Base implementation for Camera using pylablib framework. Works for TSI and uc480 thorlabs camera
+    Base implementation for Camera using pylablib framework. Works for TSI and uc480 thorlabs camera and rpobaly others
     """
     serial_numbers = []
 
@@ -54,6 +54,7 @@ class CameraBase(DAQ_Viewer_base):
 
     callback_signal = QtCore.Signal(bool)
     live_mode_available = True
+
 
     def ini_attributes(self):
         self.controller = None
@@ -225,7 +226,7 @@ class CameraBase(DAQ_Viewer_base):
         # Way to define a wait function with arguments
         wait_func = lambda: self.controller.wait_for_frame(since=self.settings['buffer', 'mode'],
                                                            nframes=1, timeout=20.0)
-        callback = ThorlabsCallback(wait_func)
+        callback = CameraCallback(wait_func)
         self.settings.child('buffer', 'mode').setReadonly(True)
 
 
@@ -368,7 +369,7 @@ class CameraBase(DAQ_Viewer_base):
         return ''
 
 
-class ThorlabsCallback(QtCore.QObject):
+class CameraCallback(QtCore.QObject):
     """Callback object """
     data_sig = QtCore.Signal()
 

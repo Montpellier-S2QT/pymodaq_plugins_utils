@@ -43,3 +43,5 @@ Utilities
 =========
 
 * pysvisa stuff
+* CameraBasePyLabLib: Base plugin class inheriting from DAQ_Viewer_base but implementing ROI management, binning,
+  the use of buffers through the pylablib package implementation. Mostly for (S)CMOS camera
