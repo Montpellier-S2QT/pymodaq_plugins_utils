@@ -54,10 +54,11 @@ cam_params = [
 
 @dataclasses.dataclass
 class Grab:
-    grab: bool = True
+    do_acquisition: bool = True
+    snap: bool = False
     since: str = 'now'
     nframes: int = 1
-
+    n_average: int = 1
 
 
 class CameraCallback(QtCore.QObject):
@@ -69,32 +70,38 @@ class CameraCallback(QtCore.QObject):
         super().__init__()
         # Set the wait function
         self.controller = controller
-        self.do_grab = True
+        self.do_acquisition = True
 
     def set_do_grab(self, mode: Grab):
-        self.do_grab = mode.grab
-        if mode.grab:
+        self.do_acquisition = mode.do_acquisition
+        if mode.do_acquisition:
             self.wait_for_acquisition(mode)
 
     def wait_for_acquisition(self, mode: Grab):
-        while self.do_grab:
+        while self.do_acquisition:
             try:
-                nacq = 0
-                frames = []
-                while nacq < mode.nframes:
-                    self.controller.wait_for_frame(since='now')
-                    new_frames, rng = self.controller.read_multiple_images(missing_frame='skip',
-                                                                           return_rng=True)
-                    frames.append(new_frames)
-                    nacq += rng[1] - rng[0]
-                self.data_sig.emit(np.atleast_1d(np.squeeze(frames[0])))
+                ind_average = 0
+                while ind_average < mode.n_average:
+                    ind_frames = 0
+                    while ind_frames < mode.nframes:
+                        self.controller.wait_for_frame(since='now')
+                        new_frames, rng = self.controller.read_multiple_images(missing_frame='skip', return_rng=True)
+                        if ind_average == 0 and ind_frames == 0:
+                            shape = list(new_frames.shape[1:])
+                            shape = [mode.n_average, mode.nframes] + shape
+                            frames = np.zeros(shape, dtype=new_frames.dtype)
+                        nacq = rng[1] - rng[0]
+                        frames[ind_average, ind_frames:nacq, ...] = new_frames
+                        ind_frames += nacq
+                    ind_average += 1
+                self.data_sig.emit(frames)
                 QtCore.QThread.msleep(10)
             except Exception as e:
                 logger.exception(str(e))
                 self.error.emit()
                 break
             QtWidgets.QApplication.processEvents()
-            if not self.do_grab:
+            if not self.do_acquisition or mode.snap:
                 break
 
 
@@ -344,20 +351,18 @@ class CameraBasePyLabLib(DAQ_Viewer_base):
             # Warning, acquisition_in_progress returns 1,0 and not a real bool
             self.is_live = kwargs.get('live', False)
             self.Naverage = Naverage
-            if not self.is_live:
-                if self.Naverage > 1:
-                    data_array = self.controller.grab(nframes=Naverage,
-                                                      buff_size=self.settings['buffer', 'size'])
-                else:
-                    data_array = self.controller.snap()
-                self.emit_data(data_array)
-            else:
-                if not self.controller.acquisition_in_progress():
-                    self.controller.clear_acquisition()
-                    self.controller.start_acquisition(nframes=1)
-                #Then start the acquisition
-                self.callback_signal.emit(Grab(True, nframes=Naverage,
-                                               since=self.settings['buffer', 'mode']))
+
+            self.n_frames = 1
+
+            if not self.controller.acquisition_in_progress():
+                self.controller.clear_acquisition()
+                self.controller.start_acquisition(nframes=self.n_frames)
+            #Then start the acquisition
+            self.callback_signal.emit(Grab(do_acquisition=True,
+                                           snap=not self.is_live,
+                                           n_average=Naverage,
+                                           nframes=self.n_frames,
+                                           since=self.settings['buffer', 'mode']))
 
         except Exception as e:
             self.emit_status(ThreadCommand('Update_Status', [str(e), "log"]))
@@ -379,20 +384,40 @@ class CameraBasePyLabLib(DAQ_Viewer_base):
             if frame is None:
                 frame = self.controller.read_newest_image()
             # Emit the frame.
-            if frame is not None:       # happens for last frame when stopping camera
-
-                if self.Naverage > 1:
-                    frame = np.sum(frame, axis=0) / self.Naverage
-
+            if frame is not None:
                 conversion_str = self.settings['color_conversion']
                 if conversion_str != "None":
-                    frame = cv2.cvtColor(frame, getattr(cv2, f'COLOR_{conversion_str}'))
-                if len(frame.shape) == 3 and frame.shape[2] == 3:
-                    data_arrays = [np.atleast_1d(frame[..., ind]) for ind in range(3)]
+                    for ind_average in range(frame.shape[0]):
+                        for ind_frame in range(frame.shape[1]):
+                            if ind_frame == 0 and ind_average == 0:
+                                new_frame = cv2.cvtColor(frame[ind_average, ind_frame, ...],
+                                                         getattr(cv2, f'COLOR_{conversion_str}'))
+                                shape = [frame.shape[0], frame.shape[1]] + list(new_frame.shape)
+                                out_frames = np.zeros(shape, dtype=new_frame.dtype)
+                                out_frames[ind_average, ind_frame, ...] = new_frame
+                            else:
+                                cv2.cvtColor(frame[ind_average, ind_frame, ...],
+                                             getattr(cv2, f'COLOR_{conversion_str}'),
+                                             out_frames[ind_average, ind_frame, ...])
+                else:
+                    out_frames = frame
+                if self.Naverage > 1:
+                    out_frames = np.sum(out_frames, axis=0) / self.Naverage
+                else:
+                    out_frames = out_frames[0, ...]
+
+                if self.n_frames > 1:
+                    pass
+                    #todo handle chunks of frames in ND data
+                else:
+                    out_frames = out_frames[0, ...]
+
+                if out_frames.shape[-1] == 3:
+                    data_arrays = [np.atleast_1d(out_frames[..., ind]) for ind in range(3)]
                     labels = ['Red', 'Green', 'Blue']
                 else:
                     labels = ['Intensity']
-                    data_arrays = [np.atleast_1d(frame)]
+                    data_arrays = [out_frames]
 
                 self.dte_signal.emit(
                     DataToExport('Camera',
@@ -444,7 +469,7 @@ class CameraBasePyLabLib(DAQ_Viewer_base):
 
     def stop(self):
         """Stop the acquisition."""
-        self.callback_signal.emit(Grab(grab=False))
+        self.callback_signal.emit(Grab(do_acquisition=False))
         QtWidgets.QApplication.processEvents()
         self.controller.clear_acquisition()
         return ''
