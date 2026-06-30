@@ -1,0 +1,1 @@
+"from pymodaq_plugins_template.utils import Config" in C:\Users\weber\Labo\ProgrammesPython\PyMoDAQ_Git\pymodaq_plugins_folder\pymodaq_plugins_utils\src\pymodaq_plugins_utils\extensions\custom_extension_template.py (12)
