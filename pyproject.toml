@@ -11,6 +11,7 @@ package-url = 'https://github.com/PyMoDAQ/pymodaq_plugins_utils'
 [project.optional-dependencies]
 serial = [
     "pyvisa",
+    "pyserial",
 ]
 
 [project]
