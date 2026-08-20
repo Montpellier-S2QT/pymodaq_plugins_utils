@@ -89,7 +89,7 @@ class CameraCallback(QtCore.QObject):
 
                         # in case hardware has a random buffer size (ex: Andor CCD cameras)
                         if new_frames.shape[0] != mode.nframes:
-                            new_frames = np.expand_dims(new_frames[-mode.nfames:], axis=0)
+                            new_frames = np.expand_dims(new_frames[-mode.nframes:], axis=0)
 
                         if ind_average == 0 and ind_frames == 0:
                             shape = list(new_frames.shape[1:])
